@@ -397,89 +397,585 @@ fig.UserData = ud;
 
 cb_update(fig);
 
-%% 21. NORMALISED ABSOLUTE COEFFICIENT PLOT (FIGURE 2)
+%% ================================================================
+% 21. BASELINE-ALIGNED NORMALISED ABSOLUTE COEFFICIENT PLOT
+%     (FIGURE 2 - STACKED)
+%
+% Purpose:
+%
+%   Show the absolute coefficient responses individually while
+%   placing the normal pre-impact baseline directly on each
+%   coefficient tick.
+%
+%   The original Figure 2 used:
+%
+%       coeff_abs_norm
+%
+%   which is a GLOBAL min-max normalisation. Therefore, zero
+%   corresponded to the global minimum over the entire record,
+%   not to the normal pre-impact state.
+%
+%   Here we use:
+%
+%       coeff_abs_response_norm
+%
+%   from Section 10, which is referenced to the pre-impact
+%   baseline.
+%
+% ================================================================
+
 fig_abs_norm = figure( ...
-    'Name','Normalised Absolute Ellipse Parameters', ...
-    'Position',[180 120 1050 650], ...
-    'Color','white');
-ax_abs_norm = axes('Parent',fig_abs_norm);
+    'Name', ...
+    'Normalised Absolute Ellipse Parameters', ...
+    'Position', ...
+    [180 120 1050 650], ...
+    'Color', ...
+    'white');
+
+ax_abs_norm = ...
+    axes('Parent',fig_abs_norm);
+
 hold(ax_abs_norm,'on');
 
+
+%% ================================================================
+% 21.1 STACKING SETTINGS
+% ================================================================
+
+% Each plotted response is approximately in [0,1].
+%
+% A spacing of 1.6 gives a clear gap between neighbouring
+% coefficient trends.
+
 abs_stack_spacing = 1.6;
-abs_tick_positions = (0:4)'*abs_stack_spacing;
+
+abs_tick_positions = ...
+    (0:4)' * abs_stack_spacing;
+
+
+%% ================================================================
+% 21.2 PLOT BASELINE-ALIGNED RESPONSES
+% ================================================================
 
 for j = 1:5
+
+    % ------------------------------------------------------------
+    % Coefficient ordering:
+    %
+    % j = 1 -> e
+    % j = 2 -> d
+    % j = 3 -> c
+    % j = 4 -> b
+    % j = 5 -> a
+    % ------------------------------------------------------------
+
     pidx = 6-j;
-    v_plot = coeff_abs_norm(pidx,:) + abs_tick_positions(j);
-    plot(ax_abs_norm,t_plot,v_plot, ...
-        'Color',param_colors(pidx,:),'LineWidth',1.2);
+
+
+    % ------------------------------------------------------------
+    % Take the baseline-referenced response calculated in
+    % Section 10.
+    % ------------------------------------------------------------
+
+    v_response = ...
+        coeff_abs_response_norm(pidx,:);
+
+
+    % ------------------------------------------------------------
+    % Estimate the remaining small baseline level.
+    %
+    % The median is used rather than the first point so that
+    % normal baseline fluctuations do not determine the
+    % vertical alignment.
+    % ------------------------------------------------------------
+
+    baseline_level = ...
+        median( ...
+            v_response(baseline_mask), ...
+            'omitnan');
+
+
+    % ------------------------------------------------------------
+    % Shift the baseline to zero.
+    % ------------------------------------------------------------
+
+    v_response = ...
+        v_response - baseline_level;
+
+
+    % ------------------------------------------------------------
+    % Prevent the normal baseline from falling below its tick.
+    %
+    % Small negative values here simply mean that the signal
+    % is below the median baseline level.
+    % For the stacked visualisation, these are clipped at zero.
+    % ------------------------------------------------------------
+
+    v_response = ...
+        max(v_response,0);
+
+
+    % ------------------------------------------------------------
+    % Re-normalise the displayed response to [0,1].
+    %
+    % This is ONLY for the figure.
+    % The saved numerical data are not changed.
+    % ------------------------------------------------------------
+
+    response_max = ...
+        max(v_response,[],'omitnan');
+
+
+    if isfinite(response_max) && ...
+            response_max > 1e-12
+
+        v_response = ...
+            v_response / response_max;
+
+    else
+
+        v_response = ...
+            zeros(size(v_response));
+
+    end
+
+
+    % ------------------------------------------------------------
+    % Add vertical stacking offset.
+    %
+    % The baseline now corresponds directly to the tick.
+    % ------------------------------------------------------------
+
+    v_plot = ...
+        v_response + abs_tick_positions(j);
+
+
+    % ------------------------------------------------------------
+    % Plot
+    % ------------------------------------------------------------
+
+    plot( ...
+        ax_abs_norm, ...
+        t_plot, ...
+        v_plot, ...
+        'Color', ...
+        param_colors(pidx,:), ...
+        'LineWidth', ...
+        1.2);
+
 end
 
-xlabel(ax_abs_norm,'Time (s)');
-ylabel(ax_abs_norm,'Normalised absolute value');
-title(ax_abs_norm,'Normalised Absolute Individual Trends (stacked)');
-set(ax_abs_norm,'YTick',abs_tick_positions, ...
-    'YTickLabel',param_names,'FontWeight','bold');
-xlim(ax_abs_norm,[time(1) time(end)]);
-ylim(ax_abs_norm,[-0.2 abs_tick_positions(end)+1.4]);
-grid(ax_abs_norm,'on'); box(ax_abs_norm,'on');
-hold(ax_abs_norm,'off');
 
-%% 21.A. BASELINE-REFERENCED NORMALISED ABSOLUTE COEFFICIENT OVERLAP
+%% ================================================================
+% 21.3 AXIS LABELS
+% ================================================================
+
+xlabel( ...
+    ax_abs_norm, ...
+    'Time (s)');
+
+ylabel( ...
+    ax_abs_norm, ...
+    'Normalised absolute response');
+
+
+title( ...
+    ax_abs_norm, ...
+    'Normalised Absolute Individual Trends (stacked)');
+
+
+%% ================================================================
+% 21.4 Y-AXIS TICKS
+%
+% Each tick represents the normal pre-impact baseline level.
+% ================================================================
+
+set( ...
+    ax_abs_norm, ...
+    'YTick', ...
+    abs_tick_positions, ...
+    'YTickLabel', ...
+    param_names, ...
+    'FontWeight', ...
+    'bold');
+
+
+%% ================================================================
+% 21.5 AXIS LIMITS
+% ================================================================
+
+xlim( ...
+    ax_abs_norm, ...
+    [time(1) time(end)]);
+
+ylim( ...
+    ax_abs_norm, ...
+    [ ...
+    -0.2, ...
+    abs_tick_positions(end) + 1.4 ...
+    ]);
+
+
+%% ================================================================
+% 21.6 GRID / BOX
+% ================================================================
+
+grid( ...
+    ax_abs_norm, ...
+    'on');
+
+box( ...
+    ax_abs_norm, ...
+    'on');
+
+hold( ...
+    ax_abs_norm, ...
+    'off');
+
+
+%% ================================================================
+% 21.A BASELINE-REFERENCED NORMALISED ABSOLUTE COEFFICIENTS
+%     — OVERLAP PLOT
+%
+% Purpose:
+%
+%   All five coefficient responses are placed on one common
+%   0-to-1 scale.
+%
+%   Baseline:
+%       approximately 0
+%
+%   Impact:
+%       departure from 0
+% ================================================================
+
 fig_abs_overlap = figure( ...
-    'Name','Normalised Absolute Coefficient Response - Overlap', ...
-    'Position',[220 120 1050 650], ...
-    'Color','white');
-ax_abs_overlap = axes('Parent',fig_abs_overlap);
+    'Name', ...
+    'Normalised Absolute Coefficient Response - Overlap', ...
+    'Position', ...
+    [220 120 1050 650], ...
+    'Color', ...
+    'white');
+
+ax_abs_overlap = ...
+    axes('Parent',fig_abs_overlap);
+
 hold(ax_abs_overlap,'on');
 
+
 for j = 1:5
+
+    % ------------------------------------------------------------
+    % e, d, c, b, a
+    % ------------------------------------------------------------
+
     pidx = 6-j;
-    plot(ax_abs_overlap,t_plot,coeff_abs_response_norm(pidx,:), ...
-        'Color',param_colors(pidx,:), ...
-        'LineWidth',1.3, ...
-        'DisplayName',param_names{j});
+
+
+    % ------------------------------------------------------------
+    % Baseline-referenced response
+    % ------------------------------------------------------------
+
+    v_response = ...
+        coeff_abs_response_norm(pidx,:);
+
+
+    % ------------------------------------------------------------
+    % Align normal baseline approximately to zero.
+    % ------------------------------------------------------------
+
+    baseline_level = ...
+        median( ...
+            v_response(baseline_mask), ...
+            'omitnan');
+
+
+    v_response = ...
+        v_response - baseline_level;
+
+
+    v_response = ...
+        max(v_response,0);
+
+
+    % ------------------------------------------------------------
+    % Normalise displayed response
+    % ------------------------------------------------------------
+
+    response_max = ...
+        max(v_response,[],'omitnan');
+
+
+    if isfinite(response_max) && ...
+            response_max > 1e-12
+
+        v_response = ...
+            v_response / response_max;
+
+    else
+
+        v_response = ...
+            zeros(size(v_response));
+
+    end
+
+
+    % ------------------------------------------------------------
+    % Plot
+    % ------------------------------------------------------------
+
+    plot( ...
+        ax_abs_overlap, ...
+        t_plot, ...
+        v_response, ...
+        'Color', ...
+        param_colors(pidx,:), ...
+        'LineWidth', ...
+        1.3, ...
+        'DisplayName', ...
+        param_names{j});
+
 end
 
-yline(ax_abs_overlap,0,'--k','LineWidth',1.0,'HandleVisibility','off');
-xlabel(ax_abs_overlap,'Time (s)');
-ylabel(ax_abs_overlap,'Normalised absolute response from baseline');
-title(ax_abs_overlap,'Normalised Absolute Ellipse-Parameter Response (overlap)');
-xlim(ax_abs_overlap,[time(1) time(end)]);
-ylim(ax_abs_overlap,[0 1.05]);
-legend(ax_abs_overlap,'Location','best');
-grid(ax_abs_overlap,'on'); box(ax_abs_overlap,'on');
-hold(ax_abs_overlap,'off');
 
-%% 21.B. NORMALISED ABSOLUTE COEFFICIENTS + PURE SHOCK OVERLAP
+%% ================================================================
+% 21.A.1 ZERO BASELINE
+% ================================================================
+
+yline( ...
+    ax_abs_overlap, ...
+    0, ...
+    '--k', ...
+    'LineWidth', ...
+    1.0, ...
+    'HandleVisibility', ...
+    'off');
+
+
+%% ================================================================
+% 21.A.2 AXIS SETTINGS
+% ================================================================
+
+xlabel( ...
+    ax_abs_overlap, ...
+    'Time (s)');
+
+ylabel( ...
+    ax_abs_overlap, ...
+    'Normalised absolute response from baseline');
+
+title( ...
+    ax_abs_overlap, ...
+    'Normalised Absolute Ellipse-Parameter Response (overlap)');
+
+xlim( ...
+    ax_abs_overlap, ...
+    [time(1) time(end)]);
+
+ylim( ...
+    ax_abs_overlap, ...
+    [0 1.05]);
+
+legend( ...
+    ax_abs_overlap, ...
+    'Location', ...
+    'best');
+
+grid( ...
+    ax_abs_overlap, ...
+    'on');
+
+box( ...
+    ax_abs_overlap, ...
+    'on');
+
+hold( ...
+    ax_abs_overlap, ...
+    'off');
+
+
+%% ================================================================
+% 21.B BASELINE-REFERENCED NORMALISED ABSOLUTE COEFFICIENTS
+%      + PURE SHOCK OVERLAP
+%
+% Purpose:
+%
+%   Compare the response timing of:
+%
+%       a, b, c, d, e
+%
+%   with the pure shock signal.
+%
+%   All quantities are displayed on the same 0-to-1 scale.
+% ================================================================
+
 fig_abs_shock = figure( ...
-    'Name','Normalised Absolute Coefficients and Pure Shock', ...
-    'Position',[220 120 1100 650], ...
-    'Color','white');
-ax_abs_shock = axes('Parent',fig_abs_shock);
+    'Name', ...
+    'Normalised Absolute Coefficients and Pure Shock', ...
+    'Position', ...
+    [220 120 1100 650], ...
+    'Color', ...
+    'white');
+
+ax_abs_shock = ...
+    axes('Parent',fig_abs_shock);
+
 hold(ax_abs_shock,'on');
 
+
+%% ================================================================
+% 21.B.1 PLOT COEFFICIENT RESPONSES
+% ================================================================
+
 for j = 1:5
+
     pidx = 6-j;
-    plot(ax_abs_shock,t_plot,coeff_abs_response_norm(pidx,:), ...
-        'Color',param_colors(pidx,:), ...
-        'LineWidth',1.25, ...
-        'DisplayName',param_names{j});
+
+
+    % ------------------------------------------------------------
+    % Baseline-referenced coefficient response
+    % ------------------------------------------------------------
+
+    v_response = ...
+        coeff_abs_response_norm(pidx,:);
+
+
+    % ------------------------------------------------------------
+    % Remove the normal baseline level.
+    % ------------------------------------------------------------
+
+    baseline_level = ...
+        median( ...
+            v_response(baseline_mask), ...
+            'omitnan');
+
+
+    v_response = ...
+        v_response - baseline_level;
+
+
+    v_response = ...
+        max(v_response,0);
+
+
+    % ------------------------------------------------------------
+    % Normalise displayed response
+    % ------------------------------------------------------------
+
+    response_max = ...
+        max(v_response,[],'omitnan');
+
+
+    if isfinite(response_max) && ...
+            response_max > 1e-12
+
+        v_response = ...
+            v_response / response_max;
+
+    else
+
+        v_response = ...
+            zeros(size(v_response));
+
+    end
+
+
+    % ------------------------------------------------------------
+    % Plot coefficient
+    % ------------------------------------------------------------
+
+    plot( ...
+        ax_abs_shock, ...
+        t_plot, ...
+        v_response, ...
+        'Color', ...
+        param_colors(pidx,:), ...
+        'LineWidth', ...
+        1.25, ...
+        'DisplayName', ...
+        param_names{j});
+
 end
 
-% Pure shock signal from the third CSV column.
-plot(ax_abs_shock,time,shock_norm,'--k','LineWidth',1.8, ...
-    'DisplayName','Pure shock');
 
-yline(ax_abs_shock,0,':k','LineWidth',0.9,'HandleVisibility','off');
-xlabel(ax_abs_shock,'Time (s)');
-ylabel(ax_abs_shock,'Normalised response / shock magnitude');
-title(ax_abs_shock,'Normalised Absolute Ellipse Parameters and Pure Shock');
-xlim(ax_abs_shock,[time(1) time(end)]);
-ylim(ax_abs_shock,[0 1.05]);
-legend(ax_abs_shock,'Location','best');
-grid(ax_abs_shock,'on'); box(ax_abs_shock,'on');
-hold(ax_abs_shock,'off');
+%% ================================================================
+% 21.B.2 PURE SHOCK SIGNAL
+% ================================================================
+%
+% shock_norm is the independently min-max normalised magnitude
+% of the Shock column from the input CSV.
+%
+% This preserves the original shock timing while placing its
+% magnitude on a 0-to-1 scale.
+% ================================================================
+
+plot( ...
+    ax_abs_shock, ...
+    time, ...
+    shock_norm, ...
+    '--k', ...
+    'LineWidth', ...
+    1.8, ...
+    'DisplayName', ...
+    'Pure shock');
+
+
+%% ================================================================
+% 21.B.3 ZERO BASELINE
+% ================================================================
+
+yline( ...
+    ax_abs_shock, ...
+    0, ...
+    ':k', ...
+    'LineWidth', ...
+    0.9, ...
+    'HandleVisibility', ...
+    'off');
+
+
+%% ================================================================
+% 21.B.4 AXIS SETTINGS
+% ================================================================
+
+xlabel( ...
+    ax_abs_shock, ...
+    'Time (s)');
+
+ylabel( ...
+    ax_abs_shock, ...
+    'Normalised response / shock magnitude');
+
+title( ...
+    ax_abs_shock, ...
+    'Normalised Absolute Ellipse Parameters and Pure Shock');
+
+xlim( ...
+    ax_abs_shock, ...
+    [time(1) time(end)]);
+
+ylim( ...
+    ax_abs_shock, ...
+    [0 1.05]);
+
+
+legend( ...
+    ax_abs_shock, ...
+    'Location', ...
+    'best');
+
+
+grid( ...
+    ax_abs_shock, ...
+    'on');
+
+box( ...
+    ax_abs_shock, ...
+    'on');
+
+hold( ...
+    ax_abs_shock, ...
+    'off');
 
 %% 22. RAW GEOMETRIC DESCRIPTORS
 fig_desc = figure( ...
