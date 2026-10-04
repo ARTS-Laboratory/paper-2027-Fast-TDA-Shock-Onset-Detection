@@ -25,6 +25,15 @@ xlsx_path = r"signal_parameters.xlsx"
 df = pd.read_excel(xlsx_path)
 
 signal=[]
+'''
+
+Each number corresponds to the respective signal
+1- AMP_3-VIB_0.1-SH_0.5
+2- AMP_8-VIB_0.1_SH_1
+3- AMP_10-VIB_0.1-SH_0.5
+4- AMP_10-VIB_0.4-SH_0.4
+
+'''
 a=[]
 b=[]
 c=[]
